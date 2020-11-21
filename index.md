@@ -3,7 +3,7 @@
 
 [Here](files/example_homework_0.html) is my 5 interesting R examples
 
-[Here](files/IE582_HW1_Abdullah Aladag.html) is homework1 and my code is also [here](files/IE582_HW1_Abdullah Aladag.Rmd)
+[Here](files/IE582_HW1.html) is homework1 and my code is also [here](files/IE582_HW1_Abdullah Aladag.Rmd)
 
 
 
