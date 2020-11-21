@@ -5,6 +5,7 @@
 
 ## HOMEWORK 1 (November 20)
 [Here](files/IE582_Fall20_Homework1.pdf) is homework1 description
+
 [Here](files/IE582_HW1.html) is homework1 and my code is also [here](files/IE582_HW1.Rmd)
 
 
