@@ -8,5 +8,8 @@
 
 [Here](files/IE582_HW1.html) is homework1 and my code is also [here](files/IE582_HW1.Rmd)
 
+## HOMEWORK 2 (December 11)
+[Here](files/IE582_Fall20_Homework2.pdf) is homework2 description
 
+[Here](files/IE582_HW2.html) is homework1 and my code is also [here](files/IE582_HW2.Rmd)
 
