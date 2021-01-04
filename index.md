@@ -17,3 +17,4 @@
 [Here](files/IE582_Fall2020_Homework3.pdf) is homework 3 description
 
 [Here](files/IE582_HW3.html) is homework 3 and my code is also [here](files/IE582_HW3.Rmd)
+ 
