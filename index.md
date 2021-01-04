@@ -14,6 +14,6 @@
 [Here](files/IE582_HW2.html) is homework 2 and my code is also [here](files/IE582_HW2.Rmd)
 
 ## HOMEWORK 3 (January 1)
-[Here](files/IE582_Fall20_Homework3.pdf) is homework 3 description
+[Here](files/IE582_Fall2020_Homework3.pdf) is homework 3 description
 
 [Here](files/IE582_HW3.html) is homework 3 and my code is also [here](files/IE582_HW3.Rmd)
