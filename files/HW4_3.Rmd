@@ -1,0 +1,250 @@
+---
+title: "HOMEWORK 4"
+author: "Abdullah Aladağ - IE582 - Fall 2020"
+due: January 30
+output: html_document
+---
+
+# Optical Recognition of Handwritten Digits Data Set
+
+
+### Feature Information
+
+All features are integer in the range 0..16. Target column is the class 0..9
+
+```{r,warning = FALSE,message = F,}
+library("caret")
+library("dplyr")
+library("glmnet")
+library(Metrics)
+require(rpart)
+library(rattle)
+library(RColorBrewer)
+require(data.table,quietly = TRUE)
+library(data.table)
+library(randomForest)
+library(gbm)
+library(xgboost)
+library(e1071)
+```
+
+## Data Manipulation Part
+
+```{r}
+setwd("C:/Users/asus/Desktop")
+
+digits_train = read.table("optdigits.tra.csv",sep=",")
+digits_train$V65 = as.factor(digits_train$V65)
+digits_test = read.table("optdigits.tes.csv",sep=",")
+digits_test$V65 = as.factor(digits_test$V65)
+
+digits_train <- digits_train[,-c(1,40)] # all variables belonging to these columns are equal to zero
+
+digits_test <- digits_test[,-c(1,40)] # all variables belonging to these columns are equal to zero
+
+
+```
+
+
+
+
+## Penalized Linear Regression
+
+
+```{r}
+control <- trainControl(method = "repeatedcv",number = 5, repeats = 2, allowParallel = T)
+
+PRA = function(lambda){
+  
+  glmmod = glmnet(as.matrix(digits_train[,1:(ncol(digits_train)-1)]),digits_train$V65, family = "multinomial",type.measure = "class",trcontrol = control)
+  
+  
+  # for test and training set
+  
+  
+  prediction_test = predict(glmmod,as.matrix(digits_test[,1:(ncol(digits_test)-1)]),type ="class",s = lambda)
+  test_error= confusionMatrix(as.factor(prediction_test),digits_test$V65)
+  
+  train_prediction<- predict(glmmod,as.matrix(digits_train[,1:(ncol(digits_train)-1)]),type ="class",  s = lambda)
+  error_train <- confusionMatrix(as.factor(train_prediction),digits_train$V65)
+  
+  
+  print("Confusion matrix PLR performing on test data ")
+  print(test_error$table)      
+  print(paste("Accuracy for test data", test_error$overall[1]))
+  print(paste("Accuracy for training data", error_train$overall[1]))
+  
+}
+```
+
+
+
+```{r}
+PRA(0.1)
+```
+
+
+
+```{r}
+PRA(0.05)
+```
+
+
+
+```{r}
+PRA(0.01)
+```
+
+
+ Penalized linear regression gave better results when lambda value was tuned.PLR with lambda = 0.1 gave the worst results among PLR with different lambda values(0.1,0.05,0.01) in terms of model accuracy. The best results was achieved at lambda = 0.01. This model also has high prediction accuracy (0.92). In addition, training error(0.08) is higher than test error(0.06). Difference between training and test error is relatively small. Therefore, model does not tends to be overfitting. It also fit training data well. It is safe to say that penalized linear regression with lambda 0.01 is good to be used.   
+ 
+## Decision Tree
+
+
+```{r}
+# Classification Tree
+
+
+Decision_tree <- function(cp,minsplit){
+  
+  class_tree = rpart(V65~.,digits_train, method = "class",cp = cp, minsplit = minsplit)
+  
+  
+  
+  test_prediction= predict(class_tree,digits_test, type = "class")
+  train_prediction<- predict(class_tree,digits_train,type = "class")
+  
+  
+  error_test <- confusionMatrix(as.factor(test_prediction),digits_test$V65)
+  error_train <- confusionMatrix(as.factor(train_prediction),digits_train$V65)
+  
+  print("Confusion matrix for DT performing on test data ")
+  print(error_test$table)      
+  print(paste("Accuracy for test data", error_test$overall[1]))
+  
+  print(paste("Accuracy for training data", error_train$overall[1]))
+  
+  }
+```
+
+
+
+
+```{r}
+Decision_tree(0.1,20)
+```
+
+
+
+
+```{r}
+Decision_tree(0.01,20)
+```
+
+
+
+
+```{r}
+Decision_tree(0.01,40)
+```
+
+ Decision tree learner with cp =0.1 and minsplit = 20 gave quite bad results in terms of accuracy. When cp was increased, learner made better prediction.Increasing min split value did not have effect on results.Best results were obtained when cp and min split was taken as 0.01 and 30, However, Classification tree fell behind penalized linear regression with lambda 0.01 in terms of test and training accuracy. This might stem from features' characteristic.
+
+## Random Forest
+
+
+```{r}
+Random_forest <- function(numfeat){
+  RF = randomForest(digits_train[,1:(ncol(digits_train)-1)],digits_train$V65,type = "classification", mtry = numfeat )
+  
+  
+  # Test data
+  prediction_test = predict(RF,digits_test, type = "class")
+  error_test <- confusionMatrix(prediction_test,digits_test$V65)
+  
+  train_prediction<- predict(RF,digits_train,type = "class")
+  error_train <- confusionMatrix(as.factor(train_prediction),digits_train$V65)
+
+  
+  
+  print("Confusion matrix for test data ")
+  print(error_test$table)      
+  print(paste("Accuracy for test data", error_test$overall[1]))
+  
+  print(paste("Accuracy for training data", error_train$overall[1]))
+  
+  
+}
+
+```
+
+
+```{r}
+Random_forest(20)
+```
+
+
+```{r}
+Random_forest(30)
+```
+
+
+```{r}
+Random_forest(40)
+```
+
+ Random forest gave the highest training accuracy (1) among other learners tried up to now. At the same time, its accurate prediction capability is highly good. Therefore, Random forest is the best option to predict target value in this data set. 
+
+
+## Stochastic Gradient Boosting
+
+```{r,warning = F}
+control <- trainControl(method = "repeatedcv",number = 5, repeats = 2, allowParallel = T)
+tunning  <- expand.grid(n.trees = c(100,150,200), interaction.depth=c(1:3), shrinkage=c(0.01,0.05,0.1), n.minobsinnode=c(20))
+
+ stochastic = train(V65~., data = digits_train, method = "gbm" ,trControl = control,tuneGrid = tunning, verbose = F)
+print(stochastic)  
+
+
+prediction <- predict(stochastic,digits_test)
+error_test <- confusionMatrix(prediction,digits_test$V65)
+
+train_prediction<- predict(stochastic,digits_train)
+error_train <- confusionMatrix(as.factor(train_prediction),digits_train$V65)
+
+
+
+print(error_test$table)
+print(paste("Accuracy for test data ", error_test$overall[1]))
+print(paste("Accuracy for training data", error_train$overall[1]))
+```
+ Stochastic gradient boosting also is good option to model data like random forest.it gave high test and training accuracy with number of trees = 200, depth = 3 and alpha = 0.1.In addition, stochastic gradient boosting have relatively higher test accuracy than random forest. Underfitting and overfitting were not observed.
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+

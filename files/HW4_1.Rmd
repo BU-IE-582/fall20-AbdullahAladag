@@ -1,0 +1,435 @@
+---
+title: "HOMEWORK 4"
+author: "Abdullah Aladağ - IE582 - Fall 2020"
+due: January 30
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Communities and Crime Data Set
+
+The data combines socio-economic data from the 1990 US Census, law enforcement data from the 1990 US LEMAS survey, and crime data from the 1995 FBI UCR.
+
+### Feature Information
+
+Many variables are included so that algorithms that select or learn weights for attributes could be tested. The variables included in the dataset involve the community, such as the percent of the population considered urban, and the median family income, and involving law enforcement, such as per capita number of police officers, and percent of officers assigned to drug units.
+
+Data is described below based on original values. All numeric data was normalized into the decimal range 0.00-1.00 using an Unsupervised, equal-interval binning method. Attributes retain their distribution and skew (hence for example the population attribute has a mean value of 0.06 because most communities are small). E.g. An attribute described as 'mean people per household' is actually the normalized (0-1) version of that value. Some features names are listed  below.
+
+**Features**
+
+state numeric
+
+county numeric
+
+community numeric
+
+communityname string
+
+fold numeric
+
+population numeric
+
+householdsize numeric
+
+racepctblack numeric
+
+racePctWhite numeric
+
+racePctAsian numeric
+
+racePctHisp numeric
+
+....
+
+**Target** 
+
+
+ViolentCrimesPerPop numeric
+
+With the aim of modelling, 127 features were used. Some features have missing values. These values are filled with their column means.
+
+
+
+
+```{r,warning=FALSE,message=FALSE}
+
+# Install packages and Import library
+
+library("caret")
+library("dplyr")
+library("glmnet")
+library(Metrics)
+require(rpart)
+library(rattle)
+library(RColorBrewer)
+require(data.table,quietly = TRUE)
+library(data.table)
+library(randomForest)
+library(gbm)
+library(xgboost)
+library(e1071)
+```
+
+
+
+
+```{r }
+setwd("C:/Users/asus/Desktop")
+
+
+all_data = read.table("communities.csv", sep = ",", na.strings = c("?","NA") )
+communities = all_data[,-4]
+
+colnames(communities)[ncol(communities)] = "violent_crimes"
+
+```
+
+```{r }
+# replace NA values with their mean values
+
+for(i in 1:ncol(communities)){
+  
+  communities[,i][is.na(communities[,i])] <- round(mean(communities[,i], na.rm = TRUE))
+} 
+
+```
+
+
+```{r }
+# split whole data as training and test set
+set.seed(121)
+idx <- sample(seq(1, 2), size = nrow(communities), replace = TRUE, prob = c(.75, .25))
+
+train_comm <- communities[idx == 1,]
+test_comm <- communities[idx == 2,]
+
+
+```
+
+## Penalized Linear Regression
+
+In this part, PLR is applied to the data. Different lambda values are tried to catch the best test accuracy.
+
+
+```{r }
+# apply penalized linear regression
+
+
+PRA = function(lambda){
+  
+  glmmod = glmnet(as.matrix(train_comm[,1:(ncol(train_comm)-1)]),train_comm$violent_crimes, family = "gaussian",type.measure = "mae",trcontrol = control)
+  
+  
+  
+  # for test set
+  
+  
+  prediction_test = predict(glmmod,as.matrix(test_comm[,1:(ncol(test_comm)-1)]),s = lambda)
+  test_error= smape(test_comm$violent_crimes,prediction_test)
+  
+  train_prediction<- predict(glmmod,as.matrix(train_comm[,1:(ncol(test_comm)-1)]),s = lambda)
+  error_train <- smape(train_comm$violent_crimes,train_prediction)
+
+  
+  plot(test_comm$violent_crimes,prediction_test, xlab = "Actual Value", ylab= "Predicted", main = paste(" Penalized Linear Regression with",lambda))
+  abline(a=0,b =1, col = 2)
+  print(paste("Accuracy for test data", 1-test_error))
+  print(paste("Accuracy for training data", 1-error_train))
+  
+ }
+
+```
+
+
+
+
+```{r }
+# Penalized Linear Regression with lambda 0.1
+PRA(0.1)
+```
+
+
+
+```{r }
+# Penalized Linear Regression with lambda 0.01
+PRA(0.01)
+
+```
+
+
+
+```{r }
+# Penalized Linear Regression with lambda 0.001
+PRA(0.001)
+
+```
+
+  Penalized linear regression was applied to data using three different lambda values. It is expected that penalized linear regression gaves better results than regression tree because regression trees have no extrapolation capabilities.Thus,regression trees does not work well in regression problems.However,test and training accuracy did not meet this expectation. This might stem from not trying lambda values which give the best results in terms of accuracy.Besides, data set contained some colums which have missing values.As I mentioned above,these values were filled with their column mean values.This was not sufficient to get better results.The best accuracy was acquired when lambda value was taken 0.01(Training accuracy =0.5,Test accuracy = 0.48). In addition to this,test error is in consistent with training error. When comparing test and training accuracy, I observed that underfitting seems to have appeared because model did not fit data Therefore, its prediction capability did not reach desired level.
+
+
+## Regression Tree
+
+
+
+```{r }
+# Regression Tree
+
+Decision_tree <- function(cp,minsplit){
+  
+  Reg_tree = rpart(violent_crimes~.,train_comm, method = "anova",cp = cp, minsplit = minsplit)
+  
+  
+  
+  test_prediction= predict(Reg_tree,test_comm)
+  test_error= smape(test_comm$violent_crimes,test_prediction)
+  
+  train_prediction<- predict(Reg_tree,train_comm)
+  error_train <- smape(train_comm$violent_crimes,train_prediction)
+  
+
+  
+  plot(test_comm$violent_crimes,test_prediction, xlab = "Actual Value", ylab= "Predicted",main = paste("Decision Tree with cp =",cp,"and Minsip =" ,minsplit))
+  abline(a=0,b =1, col = 2)
+  
+  print(paste("Accuracy for test data", 1-test_error))
+  print(paste("Accuracy for training data", 1-error_train))
+  
+  
+}
+
+```
+
+
+
+```{r }
+Decision_tree(cp = 0.01, minsplit =20)
+
+```
+
+
+
+
+```{r }
+Decision_tree(cp = 0.001, minsplit =20)
+
+
+```
+
+
+
+```{r }
+Decision_tree(cp = 0.001, minsplit = 10)
+
+
+```
+In this part, regression tree was applied to data. It is known that regression tree does not work well in regression problem due to lack of its extrapolation capability. The best accurasy was obtained when cp and minsplit were equal to 0.01 and 10. When cp decreases, it is expected that model tends to be overfitting. This expectation was observed these simulations. The situation cp was equal to 0.01 acquired high training accuracy but its prediction capability did not reach desired level(test accuracy =0.47, training accuracy = 0.62).besides,model also showed overfitting when minsplit was taken relatively small.
+
+## Random Forest
+```{r }
+##Random forest
+
+Random_forest <- function(numfeat){
+  RF = randomForest(train_comm[,1:(ncol(train_comm)-1)],train_comm$violent_crimes, mtry = numfeat )
+  print(RF)
+  
+  # Test data
+  prediction_test = predict(RF,test_comm)
+  test_error = smape(prediction_test,test_comm$violent_crimes)
+  
+  train_prediction<- predict(RF,train_comm)
+  error_train <- smape(train_comm$violent_crimes,train_prediction)
+  
+
+  plot(test_comm$violent_crimes, prediction_test, main = "Random Forest",xlab = "Actual Value", ylab= "Predicted")
+  abline(a=0 ,b=1, col =2)
+  print(paste("Accuracy for test data", 1-test_error))
+  print(paste("Accuracy for training data", 1-error_train))
+  
+
+  
+}
+
+```
+
+
+
+```{r }
+Random_forest(20)
+
+```
+
+
+
+```{r }
+Random_forest(15)
+
+
+```
+
+
+
+```{r }
+Random_forest(30)
+
+
+```
+
+Random forest use many trees to predict target values. Therefore, it is expected to get better results than regression trees. Results met this expectation.The best results was achieved when number of features which are choosen randomly as splitting feature was equal to 30.Random forest tends to be overfitting because many trees are used. Overfitting was observed as expected(training accuracy =0.76, test accuracy =0.5).However, random forest gave best test accuracy among others learners tried to predict target values.  
+
+## Stochastic Gradient Boosting
+```{r }
+stoc_grad_boosting <- function(alpha,depth,numtree){
+  
+  control <- trainControl(method = "repeatedcv",number = 5, repeats = 2, allowParallel = T)
+  
+  
+  unwantedoutput <- capture.output( GBMModel <-  gbm(violent_crimes~., data = train_comm, bag.fraction = 0.7,n.trees = numtree, shrinkage = alpha,interaction.depth = depth))
+  
+  print(GBMModel)
+  
+
+  prediction <- predict(GBMModel,test_comm)
+  test_error <- smape(prediction,test_comm$violent_crimes)
+  
+  train_prediction<- predict(GBMModel,train_comm)
+  error_train <- smape(train_comm$violent_crimes,train_prediction)
+  
+  
+  
+  plot(test_comm$violent_crimes, prediction, main = "S. Gradient Boosting",xlab = "Actual Value", ylab= "Predicted")
+  abline(a=0 ,b=1, col =2)
+  print(paste("Accuracy for test data", 1-test_error))
+  print(paste("Accuracy for training data", 1-error_train))
+}
+
+```
+
+
+
+```{r }
+stoc_grad_boosting(0.01,1,100)
+
+```
+
+
+
+```{r }
+stoc_grad_boosting(0.01,2,150)
+
+
+```
+
+
+
+```{r }
+stoc_grad_boosting(0.001,2,150)
+
+
+```
+
+Stochastic gradient boosting trains model in an iterative way. it aims reducing error metrics. It gave the worst results among other learners. The best result was acquired when depth, alpha and number of trees were taken 2, 0.01 and 150.
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
+
+
+```{r }
+
+
+```
