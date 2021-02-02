@@ -18,3 +18,13 @@
 
 [Here](files/IE582_HW3.html) is homework 3 and my code is also [here](files/IE582_HW3.Rmd)
  
+## HOMEWORK 4 (January 30)
+[My results for 1nd dataset ](files/HW4_1.html) and [My code](files/HW4_1.Rmd)
+
+[My results for 2nd dataset ](files/HW4_2.html) and [My code](files/HW4_2.Rmd)
+
+[My results for 3rd dataset](files/HW4_3.html) and [My code](files/HW4_3.Rmd)
+
+[My results for 4th dataset](files/HW4_4.html) and [My code](files/HW4_4.Rmd)
+
+
